@@ -16,9 +16,6 @@ if __name__ == "__main__":
 
     dp.add_handler(CommandHandler("start", start))
 
-    # Використання вебхуків із правильною URL-адресою без вказання порту
-    public_url = os.getenv('RENDER_EXTERNAL_URL')
-    updater.start_webhook(listen="0.0.0.0", url_path=TOKEN)
-    updater.bot.set_webhook(f"{public_url}/{TOKEN}")
-
+    # Запуск бота в режимі опитування
+    updater.start_polling()
     updater.idle()
