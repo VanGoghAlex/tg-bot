@@ -1,6 +1,6 @@
 import os
 import logging
-from telegram import Bot, Update
+from telegram import Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -8,7 +8,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 def start(update: Update, context: CallbackContext):
-    update.message.reply_text(f"Hello, {update.effective_user.first_name}! I'm your bot.")
+    update.message.reply_text(f"Хай, {update.effective_user.first_name}! I'm your bot, Голова.")
 
 if __name__ == "__main__":
     updater = Updater(token=TOKEN, use_context=True)
@@ -16,9 +16,10 @@ if __name__ == "__main__":
 
     dp.add_handler(CommandHandler("start", start))
 
-    # Використання вебхуків без вказання порту
+    # Використання вебхуків із правильною URL-адресою
+    public_url = os.getenv('RENDER_EXTERNAL_URL')
     updater.start_webhook(listen="0.0.0.0",
                           url_path=TOKEN)
-    updater.bot.set_webhook(f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{TOKEN}")
+    updater.bot.set_webhook(f"{public_url}/{TOKEN}")
 
     updater.idle()
