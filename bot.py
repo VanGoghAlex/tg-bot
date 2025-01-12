@@ -1,67 +1,56 @@
 import os
 import logging
+from telegram import Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from telegram import Bot
 
 # Налаштування логування
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ідентифікатори таблиць
-USER_SHEET_ID = "1G1TvM6BMakQegginA4W8ZVsqTqaflbTMHwWCFG0nvdI"  # Таблиця з ID користувачів
-DATA_SHEET_ID = "15Cp8O9FMz4UMxAtGBllC0urHqDozrlzfHNueXc4V5oI"  # Таблиця з даними
+# Ідентифікатор таблиці Google Sheets
+SHEET_ID = "1G1TvM6BMakQegginA4W8ZVsqTqaflbTMHwWCFG0nvdI"
 
-# Підключення до Google Sheets
+# Ініціалізація Google Sheets API
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("/etc/secrets/service_account.json", scope)
 client = gspread.authorize(creds)
 
-# Підключення до Telegram Bot
+# Ініціалізація Telegram Token
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-bot = Bot(token=TOKEN)
 
-# Отримання таблиць
-user_sheet = client.open_by_key(USER_SHEET_ID).sheet1
-data_sheet = client.open_by_key(DATA_SHEET_ID).worksheet("Пам’ять скрипта по оплатах")
+# Функція для запису ID менеджера в Google Таблицю
+def add_manager_id_to_sheet(user_name, user_id):
+    sheet = client.open_by_key(SHEET_ID).sheet1  # Відкрити таблицю
+    data = sheet.get_all_values()  # Отримати всі дані таблиці
+    existing_ids = [row[0] for row in data]  # Зібрати список існуючих ID
+    
+    if str(user_id) not in existing_ids:  # Якщо ID ще немає в таблиці
+        sheet.append_row([str(user_id), user_name])  # Додати новий рядок із ID та іменем
 
-# Отримуємо список менеджерів та їхні Telegram ID
-def get_managers():
-    data = user_sheet.get_all_values()[1:]  # Пропускаємо заголовок
-    return {row[1]: row[0] for row in data if len(row) >= 3 and row[1]}  # {manager_name: telegram_id}
-
-# Відправка повідомлення менеджеру
-def send_message(manager_name, message):
-    managers = get_managers()
-    if manager_name in managers:
-        telegram_id = managers[manager_name]
-        bot.send_message(chat_id=telegram_id, text=message)
-    else:
-        logger.warning(f"Менеджер {manager_name} не знайдений у таблиці ID користувачів.")
-
-# Перевірка оплат і надсилання повідомлень
-def check_payments():
-    all_data = data_sheet.get_all_values()[1:]  # Пропускаємо заголовок
-    sent_payments = set()  # Зберігаємо вже надіслані повідомлення
-
-    for row in all_data:
-        client_name = row[0]  # Колонка F — Клієнт
-        manager_name = row[1]  # Колонка G — Менеджер
-        month = row[2]  # Колонка H — Місяць
-        amount = row[3]  # Колонка I — Сума
-
-        # Унікальний ключ для перевірки дублювання
-        payment_key = f"{client_name}-{manager_name}-{month}-{amount}"
-
-        if payment_key not in sent_payments:  # Якщо такого повідомлення ще не було
-            message = f"Оплата: {client_name}\nМісяць: {month}\nСума: {amount}"
-            send_message(manager_name, message)
-            sent_payments.add(payment_key)  # Додаємо ключ у пам'ять
-        else:
-            logger.info(f"Повідомлення для {payment_key} вже було надіслано.")
-
-if __name__ == "__main__":
+# Обробник команди /start
+def start(update: Update, context: CallbackContext):
+    user_name = update.effective_user.first_name
+    user_id = update.effective_user.id
+    update.message.reply_text(f"Привіт, {user_name}! Твій Telegram ID: {user_id}")
+    
+    # Спроба записати ID в таблицю
     try:
-        check_payments()
+        add_manager_id_to_sheet(user_name, user_id)
+        update.message.reply_text("Тебе успішно додано в таблицю!")
     except Exception as e:
-        logger.error(f"Сталася помилка: {e}")
+        logger.error(f"Помилка при додаванні ID в таблицю: {e}")
+        update.message.reply_text(f"Сталася помилка: {e}")
+
+# Основна функція для запуску бота
+if __name__ == "__main__":
+    updater = Updater(token=TOKEN, use_context=True)
+    dp = updater.dispatcher
+
+    # Додаємо обробник команди /start
+    dp.add_handler(CommandHandler("start", start))
+
+    # Запуск бота за допомогою long polling
+    updater.start_polling()
+    updater.idle()
