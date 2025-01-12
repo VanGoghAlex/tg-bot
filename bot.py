@@ -67,8 +67,9 @@ def webhook():
 # Основна функція запуску
 if __name__ == "__main__":
     # Налаштування вебхука
-WEBHOOK_URL = f"https://tg-bot-a1zg.onrender.com/{TOKEN}"
-bot.set_webhook(WEBHOOK_URL)
+    WEBHOOK_URL = f"https://tg-bot-a1zg.onrender.com/{TOKEN}"
+    bot.set_webhook(WEBHOOK_URL)
     
     # Запуск Flask додатка
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
