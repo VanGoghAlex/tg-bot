@@ -23,12 +23,12 @@ bot = Bot(token=TOKEN)
 
 # Отримання таблиць
 user_sheet = client.open_by_key(USER_SHEET_ID).sheet1
-data_sheet = client.open_by_key(DATA_SHEET_ID).worksheet("\u0420\u043e\u0437\u0440\u0430\u0445\u0443\u043d\u043a\u0438")
+data_sheet = client.open_by_key(DATA_SHEET_ID).worksheet("Пам’ять скрипта по оплатах")
 
 # Отримуємо список менеджерів та їхні Telegram ID
 def get_managers():
     data = user_sheet.get_all_values()[1:]  # Пропускаємо заголовок
-    return {row[2]: row[0] for row in data if len(row) >= 3 and row[2]}  # {manager_name: telegram_id}
+    return {row[1]: row[0] for row in data if len(row) >= 3 and row[1]}  # {manager_name: telegram_id}
 
 # Відправка повідомлення менеджеру
 def send_message(manager_name, message):
@@ -39,33 +39,26 @@ def send_message(manager_name, message):
     else:
         logger.warning(f"Менеджер {manager_name} не знайдений у таблиці ID користувачів.")
 
-# Відстеження замальованих клітинок
+# Перевірка оплат і надсилання повідомлень
 def check_payments():
-    all_data = data_sheet.get_all_values()
-    header = all_data[0]
-    clients = all_data[1:]
+    all_data = data_sheet.get_all_values()[1:]  # Пропускаємо заголовок
+    sent_payments = set()  # Зберігаємо вже надіслані повідомлення
 
-    for row in clients:
-        client_name = row[0]
-        manager_name = extract_manager_name(client_name)
+    for row in all_data:
+        client_name = row[0]  # Колонка F — Клієнт
+        manager_name = row[1]  # Колонка G — Менеджер
+        month = row[2]  # Колонка H — Місяць
+        amount = row[3]  # Колонка I — Сума
 
-        for col_index in range(1, len(header)):
-            cell_value = row[col_index]
-            if is_colored(data_sheet, col_index + 1, clients.index(row) + 2):  # Перевірка кольору клітинки
-                month = header[col_index]
-                message = f"Отримано оплату від {client_name} за {month}."
-                send_message(manager_name, message)
+        # Унікальний ключ для перевірки дублювання
+        payment_key = f"{client_name}-{manager_name}-{month}-{amount}"
 
-# Функція для перевірки кольору клітинки
-def is_colored(sheet, col, row):
-    cell = sheet.cell(row, col)
-    return cell.text_format and cell.text_format.get('foregroundColor')
-
-# Функція для витягання імені менеджера із назви клієнта
-def extract_manager_name(client_name):
-    if '(' in client_name and ')' in client_name:
-        return client_name.split('(')[-1].split(')')[0].strip()
-    return None
+        if payment_key not in sent_payments:  # Якщо такого повідомлення ще не було
+            message = f"Оплата: {client_name}\nМісяць: {month}\nСума: {amount}"
+            send_message(manager_name, message)
+            sent_payments.add(payment_key)  # Додаємо ключ у пам'ять
+        else:
+            logger.info(f"Повідомлення для {payment_key} вже було надіслано.")
 
 if __name__ == "__main__":
     try:
