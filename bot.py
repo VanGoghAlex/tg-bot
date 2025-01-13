@@ -46,31 +46,42 @@ def get_manager_ids():
 # Функція для отримання даних з аркуша "Пам’ять скрипта по оплатах"
 def get_payment_data():
     try:
-        sheet = client.open_by_key(DATA_SHEET_ID).worksheet("Пам’ять скрипта по оплатах")  # Відкриваємо потрібний аркуш
-        data = sheet.get_all_records(head=2)  # Починаємо з другого рядка, де є дані
+        # Відкриваємо аркуш
+        sheet = client.open_by_key(DATA_SHEET_ID).worksheet("Пам’ять скрипта по оплатах")
+        
+        # Отримуємо всі записи, починаючи з другого рядка
+        data = sheet.get_all_records(head=2)  # Пропускаємо перший рядок (заголовки)
+        
+        # Логуємо отримані дані для перевірки
         logger.info(f"Отримано дані про оплати: {data}")
-        return data
+        
+        # Обробляємо дані, працюємо з клієнтами зі стовпця F, менеджерами зі стовпця G
+        payments = []
+        for payment in data:
+            client_name = payment.get('F')  # Ім'я клієнта зі стовпця F
+            manager_name = payment.get('G')  # Ім'я менеджера зі стовпця G
+            month = payment.get('Н')  # Місяць з стовпця Н
+            amount = payment.get('І')  # Сума з стовпця І
+
+            if client_name and manager_name:  # Перевірка на наявність значень
+                payments.append({
+                    'client_name': client_name,
+                    'manager_name': manager_name,
+                    'month': month,
+                    'amount': amount
+                })
+        
+        # Якщо дані є, повертаємо їх для подальшої обробки
+        if payments:
+            return payments
+        else:
+            logger.warning("Немає даних для обробки!")
+            return []
+
     except Exception as e:
         logger.error(f"Помилка при отриманні даних про оплати: {e}")
         return []
 
-# Функція для відправки повідомлень менеджерам
-def send_payments_to_managers():
-    try:
-        # Отримуємо всі дані
-        payments = get_payment_data()
-        if not payments:
-            logger.warning("Немає даних для обробки!")
-            return
-        
-        manager_ids = get_manager_ids()  # Отримуємо ID менеджерів
-        
-        # Перебираємо записи
-        for payment in payments:
-            client_name = payment.get('F')  # Клієнт
-            manager_name = payment.get('G')  # Менеджер
-            month = payment.get('Н')  # Місяць
-            amount = payment.get('І')  # Сума
 
             # Перевіряємо, чи є менеджер в списку з ID
             if manager_name in manager_ids:
