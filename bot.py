@@ -31,7 +31,7 @@ dispatcher = Dispatcher(bot, None, workers=0)
 
 # Функція для отримання ID менеджерів
 def get_manager_ids():
-    sheet = client.open_by_key(USER_SHEET_ID).sheet1  # Відкрити таблицю з менеджерами
+    sheet = client.open_by_key(USER_SHEET_ID).sheet1  # Відкриваємо таблицю з менеджерами
     data = sheet.get_all_records()
     manager_ids = {}
     for row in data:
@@ -49,7 +49,7 @@ def send_payments_to_managers():
     # Отримуємо всі дані
     payments = get_payment_data()
     manager_ids = get_manager_ids()  # Отримуємо ID менеджерів
-    
+
     # Перебираємо записи
     for payment in payments:
         client_name = payment.get('F')  # Клієнт
@@ -60,7 +60,7 @@ def send_payments_to_managers():
         # Перевіряємо, чи є менеджер в списку з ID
         if manager_name in manager_ids:
             manager_id = manager_ids[manager_name]
-            
+
             # Формуємо повідомлення
             message = f"Привіт, {manager_name}!\n\nОсь інформація по клієнту {client_name}:\n"
             message += f"Місяць: {month}\n"
@@ -73,6 +73,7 @@ def send_payments_to_managers():
                 logger.info(f"Повідомлення відправлено менеджеру {manager_name} (ID: {manager_id})")
             except Exception as e:
                 logger.error(f"Не вдалося відправити повідомлення менеджеру {manager_name}: {e}")
+
 
 # Функція для обробки команди /start
 def start(update: Update, context: CallbackContext):
