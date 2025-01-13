@@ -80,13 +80,20 @@ def start(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     update.message.reply_text(f"Привіт, {user_name}! Твій Telegram ID: {user_id}")
 
-    # Спроба записати ID в таблицю
-    try:
-        add_manager_id_to_sheet(user_name, user_id)
-        update.message.reply_text("Тебе успішно додано в таблицю!")
-    except Exception as e:
-        logger.error(f"Помилка при додаванні ID в таблицю: {e}")
-        update.message.reply_text(f"Сталася помилка: {e}")
+    # Перевірка наявності ID користувача в таблиці
+    sheet = client.open_by_key(USER_SHEET_ID).sheet1
+    existing_ids = set(sheet.col_values(1))  # Отримуємо всі ID з першої колонки
+    
+    if str(user_id) in existing_ids:  # Якщо ID вже є в таблиці, не надсилаємо повторно повідомлення
+        update.message.reply_text("Ти вже є в базі даних. Повідомлення не буде повторно надіслано.")
+    else:
+        # Спроба записати ID в таблицю
+        try:
+            add_manager_id_to_sheet(user_name, user_id)
+            update.message.reply_text("Тебе успішно додано в таблицю!")
+        except Exception as e:
+            logger.error(f"Помилка при додаванні ID в таблицю: {e}")
+            update.message.reply_text(f"Сталася помилка: {e}")
 
 # Функція для запису ID менеджера в Google Таблицю
 def add_manager_id_to_sheet(user_name, user_id):
