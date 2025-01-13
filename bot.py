@@ -59,8 +59,9 @@ dispatcher.add_handler(CommandHandler("start", start))
 # Функція для отримання даних з аркуша "Пам’ять скрипта по оплатах"
 def get_payment_data():
     sheet = client.open_by_key(DATA_SHEET_ID).worksheet("Пам’ять скрипта по оплатах")  # Відкриваємо потрібний аркуш
-    data = sheet.get_all_records()
+    data = sheet.get_all_records(head=2)  # Починаємо з другого рядка, де є дані
     return data
+
 
 # Функція для отримання ID менеджерів
 def get_manager_ids():
