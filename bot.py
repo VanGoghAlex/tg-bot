@@ -14,7 +14,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # Отримання токена із змінної середовища
-    TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+    TOKEN = os.getenv('TELEGRAM_TOKEN')
     
     application = Application.builder().token(TOKEN).build()
 
