@@ -63,11 +63,15 @@ def index():
     return "Сервер працює!", 200
 
 @app.route(f"/{TOKEN}", methods=['POST'])
-def webhook():
-    """Обробляє вхідні запити від Telegram."""
-    update = Update.de_json(request.get_json(force=True), bot)
-    application.update_queue.put_nowait(update)
-    return "OK", 200
+def telegram_webhook():
+    try:
+        # Отримання оновлення від Telegram
+        update = Update.de_json(request.get_json(force=True), bot)
+        dispatcher.process_update(update)
+        return "OK", 200
+    except Exception as e:
+        logger.error(f"Помилка обробки вебхука: {e}")
+        return "Internal Server Error", 500
 
 # Запуск Flask та Telegram Application
 if __name__ == '__main__':
