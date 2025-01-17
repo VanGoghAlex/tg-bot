@@ -31,24 +31,27 @@ def index():
 
 # Ендпоінт для надсилання повідомлень
 @app.route('/send_message', methods=['POST'])
+@app.route('/send_message', methods=['POST'])
 def send_message():
     try:
-        # Отримання даних із запиту
         data = request.json
         chat_id = data.get("chat_id")
         message = data.get("message")
 
-        # Перевірка вхідних даних
+        logger.info(f"Отримано запит: chat_id={chat_id}, message={message}")
+
         if not chat_id or not message:
             return jsonify({"error": "chat_id або message відсутні"}), 400
 
-        # Надсилання повідомлення
-        bot.send_message(chat_id=chat_id, text=message)
-        logger.info(f"Повідомлення успішно надіслано до чату {chat_id}")
+        # Відправка повідомлення через Telegram
+        response = bot.send_message(chat_id=chat_id, text=message)
+        logger.info(f"Відповідь Telegram API: {response}")
+
         return jsonify({"status": "success"}), 200
     except Exception as e:
         logger.error(f"Помилка при надсиланні повідомлення: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 # Запуск сервера
 if __name__ == '__main__':
