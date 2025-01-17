@@ -1,62 +1,61 @@
 import os
 import logging
 from flask import Flask, request
-from telegram import Bot, Update
+from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # Налаштування логування
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Ініціалізація Flask
-app = Flask(__name__)
+# Ініціалізація Google Sheets API
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
+client = gspread.authorize(creds)
 
-# Telegram Token
-TOKEN = "7618878733:AAEnOG6qUZTDAb3FuycNtbUmWlMnbi4Uafc"
+# Вкажіть назву або ID таблиці
+SHEET_ID = "15Cp8O9FMz4UMxAtGBllC0urHqDozrlzfHNueXc4V5oI"
+SHEET_NAME = "Telegram ID"
 
-# Ініціалізація Telegram Application
+# Ініціалізація Telegram бота
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 application = Application.builder().token(TOKEN).build()
 
+# Flask додаток
+app = Flask(__name__)
 
-# Обробник для команди /start
+# Функція для запису даних у Google Sheets
+def save_to_google_sheets(user_id, user_name):
+    try:
+        sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
+        sheet.append_row([user_id, user_name])  # Додаємо новий рядок
+        logger.info(f"Дані записані: {user_id}, {user_name}")
+    except Exception as e:
+        logger.error(f"Помилка запису до таблиці: {e}")
+
+# Обробник команди /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.effective_user.first_name
     user_id = update.effective_user.id
-    logger.info(f"Користувач {user_name} (ID: {user_id}) запустив бота.")
-    await update.message.reply_text(f"Привіт, {user_name}! Ваш Telegram ID: {user_id}")
 
+    # Зберігаємо дані в таблицю
+    save_to_google_sheets(user_id, user_name)
 
-# Додати обробник для команди /start
+    # Відправляємо відповідь користувачу
+    await update.message.reply_text(f"Привіт, {user_name}, приємно познайомитися! Ваш ID ({user_id}) успішно записаний.")
+
+# Додаємо обробник для команди /start
 application.add_handler(CommandHandler("start", start))
 
-
-# Маршрут для обробки вебхуків
+# Вебхук для прийому оновлень
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    try:
-        # Отримання оновлення від Telegram
-        json_update = request.get_json(force=True)
-        update = Update.de_json(json_update, application.bot)
-        logger.info(f"Отримано оновлення: {json_update}")
-        
-        # Обробка оновлення через Application
-        application.update_queue.put_nowait(update)
-        return "OK", 200
-    except Exception as e:
-        logger.error(f"Помилка при обробці вебхука: {e}")
-        return "Internal Server Error", 500
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.process_update(update)
+    return "OK", 200
 
-
-# Головна сторінка для перевірки роботи сервера
-@app.route("/", methods=["GET"])
-def index():
-    return "Сервер працює! Telegram Bot готовий до роботи.", 200
-
-
-# Запуск Flask сервера
+# Запуск сервера
 if __name__ == "__main__":
-    PORT = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=5000)
